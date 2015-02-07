@@ -1,27 +1,52 @@
-""" Registration methods based on cross correlation """
+""" Registration methods based on Lucas-Kanade registration"""
 
-from numpy import ndarray
-import numpy as np
+from numpy import array, ndarray, inf, zeros
 
 from thunder.rdds.images import Images
 from thunder.imgprocessing.registration import RegistrationMethod
-#from thunder.imgprocessing.regmethods.utils import computeDisplacement, computeReferenceMean, checkReference
 from thunder.imgprocessing.transformation import GridTransformer, TRANSFORMATION_TYPES
 from thunder.imgprocessing.regmethods.utils import volumesToMatrix, imageJacobian, solveLinearized, computeReferenceMean, checkReference
 
 
 class LucasKanadeRegistration(RegistrationMethod):
-    def __init__(self, maxIter=10, transformationType='Translation', tol=1e-3, robust=False, border=0):
-#        self.jacobian_args = kwargs
-        self.maxIter = maxIter
+    """Lucas-Kanade registration method.
+
+    Lucas-Kanade (LK) is an iterative algorithm for aligning an image to a reference. It aims to minimize the squared
+    error between the transformed image and the reference. As the relationship between transformation parameters and
+    transformed pixels is nonlinear, we have to perform a series of linearizations similar to Levenberg-Marquardt.
+    At each iteration, we compute the Jacobian of the output image with respect to the input parameters, and solve a
+    least squares problem to identify a change in parameters. We update the parameters and repeat.
+
+    To increase robustness, we extend the traditional LK algorithm to use a set of reference images.
+    We minimize the squared error of the difference of the transformed image and a learned weighting of the references.
+    """
+
+    def __init__(self, transformationType='Translation', border=0, tol=1e-5, maxIter=10, robust=False):
+        """
+        Parameters
+        ----------
+        transformationType : one of 'Translation', 'Euclidean', optional, default = 'Translation'
+            type of transformation to use
+        border : int or tuple, optional, default = 0
+            Border to be zeroed out after transformations. For most datasets, it is
+            critical that this value be larger than the maximum translation to get
+            good results and avoid boundary artifacts.
+        maxIter : int, optional, default = 10
+            maximum number of iterations
+        tol : float, optional, default = 1e-5
+            stopping criterion on the L2 norm of the change in parameters
+        robust : bool, optional, default = False
+            solve a least absolute deviation problem instead of least squares
+        """
         self.transformationType = transformationType
+        self.border = border
+        self.maxIter = maxIter
         self.tol = tol
         self.robust = robust
-        self.border = border
 
     def prepare(self, images, startidx=None, stopidx=None):
         """
-        Prepare Lucas Kanade registration by computing or specifying a reference image.
+        Prepare Lucas-Kanade registration by computing or specifying a reference image.
 
         Parameters
         ----------
@@ -36,6 +61,7 @@ class LucasKanadeRegistration(RegistrationMethod):
             self.reference = images
         else:
             raise Exception('Must provide either an Images object or a reference')
+        # Convert references to matrix to speed up solving linearized system
         self.referenceMat = volumesToMatrix(self.reference)
         return self
 
@@ -52,15 +78,17 @@ class LucasKanadeRegistration(RegistrationMethod):
             checkReference(self.reference, images)
 
     def getTransform(self, vol):
+        from numpy.linalg import norm
         # Create initial transformation
-        tfm = TRANSFORMATION_TYPES[self.transformationType](shift=np.zeros(vol.ndim))
+        tfm = TRANSFORMATION_TYPES[self.transformationType](shift=zeros(vol.ndim))
+        # Grid of coordinates needed to transform images using map_coordinates
         grid = GridTransformer(vol.shape)
         iter = 0
-        normDelta = np.inf
+        normDelta = inf
         while iter < self.maxIter and normDelta > self.tol:
             iter += 1
             volTfm, jacobian = imageJacobian(vol, tfm, grid, border=self.border)
             deltaTransformParams, coeff = solveLinearized(volumesToMatrix(volTfm), volumesToMatrix(jacobian), self.referenceMat, self.robust)
             tfm.updateParams(-deltaTransformParams)
-            normDelta = np.linalg.norm(-deltaTransformParams)
+            normDelta = norm(deltaTransformParams)
         return tfm

@@ -151,7 +151,8 @@ def solveLinearized(vec, jacobian, reference, robust=False):
     coeff : array, shape (nbasis,)
         optimal weighting of reference volumes
     """
-    A = np.column_stack((jacobian, reference))
+    from numpy import column_stack
+    A = column_stack((jacobian, reference))
     if robust:
         from statsmodels.regression.quantile_regression import QuantReg
         quantile = 0.5
@@ -240,18 +241,21 @@ def imageJacobian(vol, tfm, grid=None, sigma=None, normalize=True, border=1, ord
         jacobianVols : list of arrays
             list of volume Jacobians, one for each parameter of the transformation
     """
+    from numpy.linalg import norm
     if grid is None:
         from thunder.imgprocessing.transformation import GridTransformer
         grid = GridTransformer(vol.shape)
     grads = imageGradients(vol, sigma)
     tvol = zeroBorder(tfm.apply(vol, grid, order=order))
+    normVol = norm(tvol.ravel())
+    if normVol == 0.0:
+        raise ValueError('Transform yields volume of zeroes.')
     grads = [zeroBorder(tfm.apply(grad, grid, order=order)) for grad in grads]
     if normalize:
-        norm = np.linalg.norm(tvol.ravel())
-        if norm == 0.0:
+        if normVol == 0.0:
             raise ValueError('Transform yields volume of zeroes.')
         # Update gradients to reflect normalization
-        grads = [grad / norm - (grad * tvol).sum() / (norm**3) * tvol for grad in grads]
-        tvol /= norm
+        grads = [grad / normVol - (grad * tvol).sum() / (normVol**3) * tvol for grad in grads]
+        tvol /= normVol
     jacobianVols = tfm.jacobian(grads, grid.homo_points)
     return tvol, jacobianVols
