@@ -1,7 +1,6 @@
 """ Transformations produced by registration methods """
 import numpy as np
-from thunder.imgprocessing.regmethods.utils import zeroBorder, imageGradients, v2v
-from thunder.utils.decorators import serializable
+
 
 class Transformation(object):
     """ Base class for transformations """
@@ -12,7 +11,7 @@ class Transformation(object):
 
 class DifferentiableTransformation(Transformation):
     """
-    Differentiable transformations must have methods to ompute the Jacobian and update parameters. These are used by
+    Differentiable transformations must have methods to compute the Jacobian and update parameters. These are used by
     iterative alignment techniques like Lucas-Kanade and RASL.
     """
     def jacobian(self, imageGradients, imageGrid):
@@ -77,13 +76,24 @@ class TranslationTransformation(AffineTransformation):
         self.delta += deltaParams
 
 class EuclideanTransformation(AffineTransformation):
-    def __init__(self, shift, rotation=None, zTranslation=False, zRotation=False):
+    def __init__(self, shift, rotation=None, zTranslation=False, zRotation=False, center=None):
         """Translation and rotation in 3d.
 
         Parameters
         ----------
-        shift :
-        rot :
+        shift : list or array
+            spatial shifts for each dimension
+        rotation : float, list, or array
+            rotation in x-y if scalar. rotation in x-y plane, x-z plane, y-z plane if list
+            or array and dataset is in 3d.
+        zTranslation : bool, optional, default = False
+            whether to allow translation in z
+        zRotation : bool, optional, default = False
+            whether to allow rotation in z
+        center : list or array, optional, default = None
+            Set center coordinates that define the point around which the volume is rotated.
+            Coordinates should be in terms of zero-indexed pixels. For example if the volume was 5x5x3,
+            the default center of rotation would be at the center of the volume: (2, 2, 1).
         """
         self.shift = np.atleast_1d(shift)
         self.ndim = len(self.shift)
@@ -95,6 +105,7 @@ class EuclideanTransformation(AffineTransformation):
         self.rotation = np.atleast_1d(rotation)
         self.zRotation = zRotation
         self.zTranslation = zTranslation
+        self.center = center
 
     def updateParams(self, deltaParams):
         if self.ndim == 2:
@@ -148,7 +159,7 @@ class EuclideanTransformation(AffineTransformation):
             dpsi += imageGradients[2] * (imageGrid[1] * cphi * cpsi - imageGrid[2] * cphi * spsi)
             dangles = [dtheta, dphi, dpsi]
 
-        # Zero-out Jacobian corresponding to z transltation
+        # Zero-out Jacobian corresponding to z translation
         if ndim == 3 and not self.zTranslation:
             imageGradients[2][:] = 0.0
         return imageGradients + dangles
@@ -159,6 +170,7 @@ class EuclideanTransformation(AffineTransformation):
     def __repr__(self):
         return "EuclideanTransformation(shift=%s, rotation=%s)" % (repr(self.shift), repr(self.rotation))
 
+
 class Displacement(Transformation):
     """
     Class for transformations based on spatial displacements.
@@ -168,7 +180,7 @@ class Displacement(Transformation):
     Parameters
     ----------
     delta : list
-        A list of spatial displacements for each dimensino,
+        A list of spatial displacements for each dimension,
         e.g. [10,5,2] for a displacement of 10 in x, 5 in y, 2 in z
     """
 
@@ -256,7 +268,7 @@ class GridTransformer(object):
 
     def transform_grid_world(self, A):
         """Get the grid of points in world space after applying the given affine transform."""
-        return np.tensordot(A.T, self.homo_points, axes=(0,0))
+        return np.tensordot(A.T, self.homo_points, axes=(0, 0))
 
     def transform_grid(self, A):
         """Get the grid of points in index space after applying the given affine transform
@@ -288,7 +300,7 @@ def transformationMatrix(shift, rot=None):
     Returns
     -------
     A : array, shape (ndims + 1, ndims + 1)
-        transformation matrix that shifts and rotates a set of points in homogenous coordinates
+        transformation matrix that shifts and rotates a set of points in homogeneous coordinates
     """
 
     ndim = len(shift)
@@ -319,7 +331,8 @@ def transformationMatrix(shift, rot=None):
         A = np.dot(trans, np.dot(xrot, np.dot(yrot, zrot)))
     return A
 
+# Dict of valid types of Transformations used by Lucas-Kanade
 TRANSFORMATION_TYPES = {
-    'Translation' : TranslationTransformation,
-    'Euclidean' : EuclideanTransformation
+    'Translation': TranslationTransformation,
+    'Euclidean': EuclideanTransformation
 }
