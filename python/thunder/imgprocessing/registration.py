@@ -19,10 +19,12 @@ class Registration(object):
     def __new__(cls, method, **kwargs):
 
         from thunder.imgprocessing.regmethods.crosscorr import CrossCorr, PlanarCrossCorr
+        from thunder.imgprocessing.regmethods.lucaskanade import LucasKanadeRegistration
 
         REGMETHODS = {
             'crosscorr': CrossCorr,
-            'planarcrosscorr': PlanarCrossCorr
+            'planarcrosscorr': PlanarCrossCorr,
+            'lucaskanade': LucasKanadeRegistration
         }
 
         checkParams(method, REGMETHODS.keys())
