@@ -260,38 +260,3 @@ def imageGradients(im, sigma=None):
     grads = [sobel(im, axis=dim, mode='constant') / 8.0 for dim in xrange(im.ndim)]
     return grads
 
-
-def imageJacobian(vol, tfm, grid=None, sigma=None, normalize=True, border=1, order=1):
-    """Compute Jacobian of volume w.r.t. transformation parameters
-
-    Args:
-        vol: volume
-        tfm: Transform object
-        sigma: smoothing bandwidth for gradients (None for no smoothing)
-        normalize: Whether to normalize images before aligning.
-        border: Number or tuple of border sizes to zero after transforming.
-        order: interpolation order used by map_coordinates
-    Returns:
-        tvol : array
-            transformed volume
-        jacobianVols : list of arrays
-            list of volume Jacobians, one for each parameter of the transformation
-    """
-    from numpy.linalg import norm
-    if grid is None:
-        from thunder.registration.transformation import GridTransformer
-        grid = GridTransformer(vol.shape)
-    grads = imageGradients(vol, sigma)
-    tvol = zeroBorder(tfm.apply(vol, grid, order=order))
-    normVol = norm(tvol.ravel())
-    if normVol == 0.0:
-        raise ValueError('Transform yields volume of zeroes.')
-    grads = [zeroBorder(tfm.apply(grad, grid, order=order)) for grad in grads]
-    if normalize:
-        if normVol == 0.0:
-            raise ValueError('Transform yields volume of zeroes.')
-        # Update gradients to reflect normalization
-        grads = [grad / normVol - (grad * tvol).sum() / (normVol**3) * tvol for grad in grads]
-        tvol /= normVol
-    jacobianVols = tfm.jacobian(grads, grid.homo_points)
-    return tvol, jacobianVols

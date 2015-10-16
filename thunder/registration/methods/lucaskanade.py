@@ -6,8 +6,8 @@ from numpy import array, ndarray, inf, zeros
 
 from thunder.rdds.images import Images
 from thunder.registration.registration import RegistrationMethod
-from thunder.registration.transformation import GridTransformer, TRANSFORMATION_TYPES
-from thunder.registration.methods.utils import volumesToMatrix, imageJacobian, solveLinearized, computeReferenceMean, checkReference
+from thunder.registration.transformation import TRANSFORMATION_TYPES
+from thunder.registration.methods.utils import volumesToMatrix,  solveLinearized, computeReferenceMean, checkReference
 
 
 class LucasKanade(RegistrationMethod):
