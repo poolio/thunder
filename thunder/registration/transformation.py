@@ -381,51 +381,6 @@ class PlanarDisplacement(Transformation, Serializable):
         return "PlanarDisplacement(delta=%s)" % repr(self.delta)
 
 
-class GridTransformer(object):
-    def __init__(self, dims, center=None):
-        """Class to represent and transform a fixed grid of points over indices into a volume.
-
-        Args:
-            dims: vol_shape[::-1]
-            center: center location of grid, defaults to the centroid.
-                    Affine transfroms will be applied to the center-subtracted grid,
-                    so the center corresponds to the point of rotation.
-        """
-        self.dims = np.array(dims)
-        self.ndim = len(dims)
-        if center is None:
-            center = (self.dims - 1) / 2.0
-        self.center = center
-        self.homo_points = np.ones((self.ndim + 1,) + dims)
-        self.homo_points[:-1, ...] = np.array(np.mgrid[[slice(p) for p in self.dims]])
-        self.raw_points = self.homo_points.copy()
-        self.world_to_index_tfm = transformationMatrix(self.center, np.zeros(self.ndim))
-        self.index_to_world_tfm = transformationMatrix(-self.center, np.zeros(self.ndim))
-        self.homo_points = self.transform_grid_world(self.index_to_world_tfm)
-        self.index_points = self.transform_grid_world(self.world_to_index_tfm)
-
-    def transform_grid_world(self, A):
-        """Get the grid of points in world space after applying the given affine transform."""
-        return np.tensordot(A.T, self.homo_points, axes=(0, 0))
-
-    def transform_grid(self, A):
-        """Get the grid of points in index space after applying the given affine transform
-           in world space.
-
-        Args:
-            A: 4x4 Affine transformation matrix
-        Returns:
-            y: 4 x dims[0] x dims[1] x dims[2] matrix containing the grid
-        """
-        return self.transform_grid_world(np.dot(self.world_to_index_tfm, A))
-
-    def transform_vol(self, vol, A, **kwargs):
-        from scipy.ndimage import map_coordinates
-        new_grid = self.transform_grid(A)[:-1]
-        transformed_vol = map_coordinates(vol, new_grid, cval=0.0, **kwargs)
-        return transformed_vol
-
-
 def transformationMatrix(shift, rot=None):
     """Create an affine transformation matrix
 
