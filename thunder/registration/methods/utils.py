@@ -279,7 +279,7 @@ def imageJacobian(vol, tfm, grid=None, sigma=None, normalize=True, border=1, ord
     """
     from numpy.linalg import norm
     if grid is None:
-        from thunder.imgprocessing.transformation import GridTransformer
+        from thunder.registration.transformation import GridTransformer
         grid = GridTransformer(vol.shape)
     grads = imageGradients(vol, sigma)
     tvol = zeroBorder(tfm.apply(vol, grid, order=order))

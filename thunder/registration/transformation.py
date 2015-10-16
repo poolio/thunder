@@ -1,4 +1,5 @@
 """ Transformations produced by registration methods """
+import numpy as np
 from numpy import asarray
 from thunder.utils.serializable import Serializable
 
@@ -67,7 +68,7 @@ class DifferentiableTransformation(Transformation):
                 list of volume Jacobians with respect to coordinates, one for each dimension
         """
         from numpy.linalg import norm
-        from thunder.imgprocessing.regmethods.utils import imageGradients, zeroBorder
+        from thunder.registration.methods.utils import imageGradients, zeroBorder
 
         grads = imageGradients(vol, sigma)
         tvol = zeroBorder(self.apply(vol), border)
@@ -156,7 +157,7 @@ class TranslationTransformation(DifferentiableTransformation):
 
     def apply(self, vol):
         from scipy.ndimage.interpolation import shift
-        return shift(vol, self.shift, mode='nearest')
+        return shift(vol, self.shift, mode='constant', cval=0.0)
 
 
 class ProjectiveTransformation(GridMixin, DifferentiableTransformation):
@@ -283,14 +284,16 @@ class EuclideanTransformation(ProjectiveTransformation):
         # Zero-out Jacobian corresponding to z translation
         if ndim == 3 and not self.zTranslation:
             imageGradients[2][:] = 0.0
+        # Coordinate frame is somehow flipped??
+
         return tvol, imageGradients + dangles
 
     def asMatrix(self):
-        return transformationMatrix(self.shift,  self.rotation)
+        #XXX: grid coordinate frame is flipped
+        return transformationMatrix(-self.shift,  -self.rotation)
 
     def __repr__(self):
         return "EuclideanTransformation(shift=%s, rotation=%s)" % (repr(self.shift), repr(self.rotation))
-
 
 
 

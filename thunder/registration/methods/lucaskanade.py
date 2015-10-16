@@ -5,12 +5,12 @@ from matplotlib.pyplot import *
 from numpy import array, ndarray, inf, zeros
 
 from thunder.rdds.images import Images
-from thunder.imgprocessing.registration import RegistrationMethod
-from thunder.imgprocessing.transformation import GridTransformer, TRANSFORMATION_TYPES
-from thunder.imgprocessing.regmethods.utils import volumesToMatrix, imageJacobian, solveLinearized, computeReferenceMean, checkReference
+from thunder.registration.registration import RegistrationMethod
+from thunder.registration.transformation import GridTransformer, TRANSFORMATION_TYPES
+from thunder.registration.methods.utils import volumesToMatrix, imageJacobian, solveLinearized, computeReferenceMean, checkReference
 
 
-class LucasKanadeRegistration(RegistrationMethod):
+class LucasKanade(RegistrationMethod):
     """Lucas-Kanade registration method.
 
     Lucas-Kanade (LK) is an iterative algorithm for aligning an image to a reference. It aims to minimize the squared
@@ -90,9 +90,6 @@ class LucasKanadeRegistration(RegistrationMethod):
             iter += 1
             volTfm, jacobian = tfm.jacobian(vol, border=self.border)
             #XXX
-            from matplotlib.pyplot import *
-            plot(np.array(params));show()
-            #imshow(jacobian[0]);title(np.linalg.norm(jacobian[0])); show()
             deltaTransformParams, coeff = solveLinearized(volumesToMatrix(volTfm), volumesToMatrix(jacobian), self.referenceMat, self.robust)
             tfm.updateParams(deltaTransformParams)
             normDelta = norm(deltaTransformParams)
