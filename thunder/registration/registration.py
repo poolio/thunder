@@ -30,7 +30,7 @@ class Registration(object):
 
         checkParams(method, REGMETHODS.keys())
 
-        return REGMETHODS[method](kwargs)
+        return REGMETHODS[method](**kwargs)
 
     @staticmethod
     def load(file):
