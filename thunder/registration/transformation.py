@@ -10,8 +10,9 @@ class Transformation(object):
     def apply(self, im):
         raise NotImplementedError
 
-# Module-level dictionary mapping volume dimensions to an
-# array containing the image coordinates for that volume.
+# Module-level dictionary cache mapping volume dimensions to an array containing
+# the image coordinates for that volume. These coordinates are used to speed up
+# application of transformations that inherit from GridMixin.
 _grid = {}
 
 def getGrid(dims):
