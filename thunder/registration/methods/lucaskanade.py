@@ -1,6 +1,4 @@
 """ Registration methods based on Lucas-Kanade registration"""
-#XXX:
-from matplotlib.pyplot import *
 
 from numpy import array, ndarray, inf, zeros
 
@@ -33,7 +31,7 @@ class LucasKanade(RegistrationMethod):
             Border to be zeroed out after transformations. For most datasets, it is
             critical that this value be larger than the maximum translation to get
             good results and avoid boundary artifacts.
-        maxIter : int, optional, default = 10
+        maxIter : int, optional, default = 100
             maximum number of iterations
         tol : float, optional, default = 1e-5
             stopping criterion on the L2 norm of the change in parameters
