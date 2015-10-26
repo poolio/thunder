@@ -10,25 +10,26 @@ class Transformation(object):
     def apply(self, im):
         raise NotImplementedError
 
+# Module-level variable containing a grid representation
+# of an individual volume.
+grid = None
+
+def getGrid(dims):
+    """
+    Check and (if needed) initialize a grid with the appropriate dimensions.
+
+    Parameters
+    ----------
+    dims : tuple
+        shape of volume
+    """
+    global grid
+    if grid is None or grid.shape != dims:
+        grid = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
+                          np.ones(dims)[np.newaxis, :, :]))
+    return grid
+
 class GridMixin(object):
-    grid = None
-
-    @classmethod
-    def getGrid(cls, dims):
-        """
-        Check and (if needed) initialize a grid with the appropriate dimensions.
-
-        Parameters
-        ----------
-        dims : tuple
-            shape of volume
-        """
-        if cls.grid is None or cls.grid[0].shape != dims:
-            # Create an array containing the homogenous coordinate for each voxel
-            cls.grid = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
-                                  np.ones(dims)[np.newaxis, :, :]))
-        return cls.grid
-
     def getCoords(self, grid):
         """
         Get the coordinates where the input volume is evaluated.
@@ -41,7 +42,7 @@ class GridMixin(object):
 
     def apply(self, vol, **kwargs):
         from scipy.ndimage import map_coordinates
-        grid = self.getGrid(vol.shape)
+        grid = getGrid(vol.shape)
         coords = self.getCoords(grid)
         tvol = map_coordinates(vol, coords, cval=0.0, **kwargs)
         return tvol
@@ -237,7 +238,7 @@ class EuclideanTransformation(ProjectiveTransformation):
     def jacobian(self, vol, **kwargs):
 
         tvol, imageGradients = self._jacobianCoords(vol, **kwargs)
-        imageGrid = self.grid
+        imageGrid = getGrid(vol.shape)
         ndim = len(self.shift)
 
         stheta = np.sin(self.rotation[0])
