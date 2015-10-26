@@ -23,7 +23,7 @@ class LucasKanade(RegistrationMethod):
     We minimize the squared error of the difference of the transformed image and a learned weighting of the references.
     """
 
-    def __init__(self, transformationType='Translation', border=0, tol=1e-5, maxIter=10, robust=False):
+    def __init__(self, transformationType='Translation', border=0, tol=1e-5, maxIter=100, robust=False):
         """
         Parameters
         ----------
@@ -87,11 +87,10 @@ class LucasKanade(RegistrationMethod):
         normDelta = inf
         params = []
         while iter < self.maxIter and normDelta > self.tol:
-            iter += 1
             volTfm, jacobian = tfm.jacobian(vol, border=self.border)
-            #XXX
             deltaTransformParams, coeff = solveLinearized(volumesToMatrix(volTfm), volumesToMatrix(jacobian), self.referenceMat, self.robust)
             tfm.updateParams(deltaTransformParams)
             normDelta = norm(deltaTransformParams)
             params.append(tfm.getParams())
+            iter += 1
         return tfm

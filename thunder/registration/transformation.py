@@ -12,7 +12,7 @@ class Transformation(object):
 
 # Module-level variable containing a grid representation
 # of an individual volume.
-grid = None
+_grid = None
 
 def getGrid(dims):
     """
@@ -23,11 +23,14 @@ def getGrid(dims):
     dims : tuple
         shape of volume
     """
-    global grid
-    if grid is None or grid.shape != dims:
-        grid = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
+    global _grid
+    if _grid is None or _grid.shape != dims:
+        _grid = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
                           np.ones(dims)[np.newaxis, :, :]))
-    return grid
+        # Prevent grid from being altered.
+        _grid.flags.writeable = False
+
+    return _grid
 
 class GridMixin(object):
     def getCoords(self, grid):
@@ -40,11 +43,11 @@ class GridMixin(object):
         """
         raise NotImplementedError
 
-    def apply(self, vol, **kwargs):
+    def apply(self, vol, order=1, cval=0.0, **kwargs):
         from scipy.ndimage import map_coordinates
         grid = getGrid(vol.shape)
         coords = self.getCoords(grid)
-        tvol = map_coordinates(vol, coords, cval=0.0, **kwargs)
+        tvol = map_coordinates(vol, coords, order=order, cval=0.0, **kwargs)
         return tvol
 
 class DifferentiableTransformation(Transformation):
@@ -163,7 +166,7 @@ class TranslationTransformation(DifferentiableTransformation):
 
 class ProjectiveTransformation(GridMixin, DifferentiableTransformation):
     """
-    Affine transformations are differentiable and can be represented as a matrix."""
+    Projective transformations are differentiable and can be represented as a matrix."""
 
     def __init__(self, center=None):
         self.center = center
@@ -180,16 +183,16 @@ class ProjectiveTransformation(GridMixin, DifferentiableTransformation):
         A = self.asMatrix()
 
         # Center grid so that we apply rotations w.r.t. given center
+        center_bcast = np.r_[self.center, 0].reshape((-1, ) + (1,) * d)
         if self.center is not None:
-            grid = grid - np.r_[self.center, 0][:, np.newaxis, np.newaxis]
+            grid = grid - center_bcast
 
         # Apply transformation
         grid = np.tensordot(A.T, grid, axes=(0,0))
 
         # Move back to voxel reference frame
         if self.center is not None:
-            grid = grid + np.r_[self.center, 0][:, np.newaxis, np.newaxis]
-
+            grid = grid + center_bcast
         return grid[:-1]  # throw out last homogeneous coordinate
 
 class EuclideanTransformation(ProjectiveTransformation):
