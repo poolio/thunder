@@ -10,9 +10,9 @@ class Transformation(object):
     def apply(self, im):
         raise NotImplementedError
 
-# Module-level variable containing a grid representation
-# of an individual volume.
-_grid = None
+# Module-level dictionary mapping volume dimensions to an
+# array containing the image coordinates for that volume.
+_grid = {}
 
 def getGrid(dims):
     """
@@ -24,13 +24,13 @@ def getGrid(dims):
         shape of volume
     """
     global _grid
-    if _grid is None or _grid.shape != dims:
-        _grid = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
+    if dims not in _grid:
+        _grid[dims] = np.vstack((np.array(np.meshgrid(*[np.arange(d) for d in dims], indexing='ij')),
                           np.ones(dims)[np.newaxis, :, :]))
         # Prevent grid from being altered.
-        _grid.flags.writeable = False
+        _grid[dims].flags.writeable = False
 
-    return _grid
+    return _grid[dims]
 
 class GridMixin(object):
     def getCoords(self, grid):
